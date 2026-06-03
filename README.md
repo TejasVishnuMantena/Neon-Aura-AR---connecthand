@@ -156,7 +156,7 @@ These permissions are necessary for:
 
 # 👨‍💻 Author
 
-Developed with ❤️ by **Vishnu Mantena**
+Developed by **Tejas Vishnu Mantena**
 
 > *"Turning hand movement into futuristic digital energy."*
 
