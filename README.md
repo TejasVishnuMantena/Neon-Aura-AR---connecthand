@@ -154,6 +154,12 @@ These permissions are necessary for:
 
 ---
 
+# 📜 License
+
+This project is open-source and available under the **MIT License**.
+
+---
+
 # 👨‍💻 Author
 
 Developed by **Tejas Vishnu Mantena**
@@ -161,8 +167,4 @@ Developed by **Tejas Vishnu Mantena**
 > *"Turning hand movement into futuristic digital energy."*
 
 
----
 
-# 📜 License
-
-This project is open-source and available under the **MIT License**.
