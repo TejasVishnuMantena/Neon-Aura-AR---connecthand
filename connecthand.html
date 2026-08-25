@@ -52,9 +52,6 @@
             filter: brightness(0.6) contrast(1.1); /* Subtle dark to make neon pop */
         }
 
-        /* 
-         * Background Canvas captures the video frame and applies the matrix rain/starfield 
-         */
         #bgCanvas, #mainCanvas {
             position: absolute;
             top: 0;
@@ -73,7 +70,6 @@
         #mainCanvas {
             z-index: 5;
             pointer-events: none;
-            /* We use mix-blend-mode for the glowing effects in canvas */
         }
 
         /* UI Overlays */
@@ -374,7 +370,7 @@ function getDist(p1, p2) {
     return Math.hypot(p1.x - p2.x, p1.y - p2.y);
 }
 
-// Convert normalized landmark to specific canvas scale (Note: canvas is horizontally flipped)
+// Convert normalized landmark to specific canvas scale
 function mapToCanvas(point) {
     return { x: point.x * width, y: point.y * height };
 }
@@ -383,37 +379,65 @@ let lastPinchState = [false, false]; // Prevents rapid re-triggering
 
 function detectGestures() {
     if (!currentHands.length) return;
-    
+
     currentHands.forEach((hand, idx) => {
-        // Pinch Detection: Thumb (4) and Index (8)
-        const thumb = hand[4];
-        const index = hand[8];
-        const dist = getDist(thumb, index);
+        // Landmark references
+        const thumbTip = hand[4];
+        const thumbIp  = hand[3];
         
-        const isPinching = dist < 0.05; // 5% of screen screen distance
+        const indexTip = hand[8];
+        const indexPip = hand[6];
         
+        const middleTip = hand[12];
+        const middlePip = hand[10];
+        
+        const ringTip = hand[16];
+        const ringPip = hand[14];
+        
+        const pinkyTip = hand[20];
+        const pinkyPip = hand[18];
+
+        // Finger Extension States (Y axis decreases going up on screen)
+        const isIndexOpen  = indexTip.y < indexPip.y;
+        const isMiddleOpen = middleTip.y < middlePip.y;
+        const isRingOpen   = ringTip.y < ringPip.y;
+        const isPinkyOpen  = pinkyTip.y < pinkyPip.y;
+        const isThumbUp    = thumbTip.y < thumbIp.y;
+
+        // 1. PINCH DETECTION (Thumb + Index distance)
+        const pinchDist = getDist(thumbTip, indexTip);
+        const isPinching = pinchDist < 0.05;
+
         if (isPinching && !lastPinchState[idx]) {
             const midpoint = {
-                x: (thumb.x + index.x) / 2, 
-                y: (thumb.y + index.y) / 2
+                x: (thumbTip.x + indexTip.x) / 2,
+                y: (thumbTip.y + indexTip.y) / 2
             };
             createShockwave(mapToCanvas(midpoint), themes[currentTheme](time, 1, 1));
             triggerZap();
             uiGesture.innerText = "PINCH !";
+        } 
+        // 2. PEACE SIGN (Index & Middle open, Ring & Pinky closed)
+        else if (isIndexOpen && isMiddleOpen && !isRingOpen && !isPinkyOpen) {
+            uiGesture.innerText = "PEACE ✌️";
+        } 
+        // 3. THUMBS UP (Thumb extended up, all 4 main fingers closed)
+        else if (isThumbUp && !isIndexOpen && !isMiddleOpen && !isRingOpen && !isPinkyOpen) {
+            uiGesture.innerText = "THUMBS UP 👍";
+        } 
+        // 4. FALLBACK / SPREAD GAUGE
+        else {
+            const spread = getDist(indexTip, pinkyTip);
+            let spreadPct = Math.min(Math.round(spread * 300), 100);
+            uiSpread.innerText = spreadPct + '%';
+            
+            if (!lastPinchState.includes(true)) {
+                uiGesture.innerText = spreadPct > 50 ? "Open Hand" : "Fist";
+            }
         }
+
         lastPinchState[idx] = isPinching;
     });
-
-    // Spread Percentage roughly estimated by distance from Palm(0) to Index(8) and Pinky(20)
-    if (currentHands[0]) {
-        const spread = getDist(currentHands[0][8], currentHands[0][20]);
-        // Normalizing spread so max is around 100%
-        let spreadPct = Math.min(Math.round(spread * 300), 100);
-        uiSpread.innerText = spreadPct + '%';
-        if (!lastPinchState.includes(true)) {
-            uiGesture.innerText = spreadPct > 50 ? "Open Hand" : "Fist";
-        }
-    }
 }
 
 /**
@@ -446,21 +470,17 @@ function createShockwave(pos, color) {
 
 // Background Effect Engine
 function drawBackground() {
-    // Use destination-out to fade out the previous frame's drops, leaving a transparent trail
     bgCtx.globalCompositeOperation = 'destination-out';
     bgCtx.fillStyle = `rgba(0, 0, 0, ${0.15 + Math.min(handVelocities*10, 0.5)})`;
     bgCtx.fillRect(0, 0, width, height);
     bgCtx.globalCompositeOperation = 'source-over';
 
-    // Matrix Rain Effect mapping to hand speed
     bgCtx.fillStyle = themes[currentTheme](time, 1, 1);
     bgCtx.font = fontSize + "px monospace";
     
-    // Matrix speed boosts when hands move fast
     let speedMult = 1 + (handVelocities * 100);
 
     for (let i = 0; i < matrixColumns.length; i++) {
-        // Only draw randomly to keep it sparse like stars/rain
         if (Math.random() > 0.95) {
             const char = String.fromCharCode(0x30A0 + Math.random() * 96);
             bgCtx.fillText(char, i * fontSize, matrixColumns[i] * fontSize);
@@ -497,7 +517,7 @@ function updatePhysics() {
     // Ripples / Shockwaves
     for (let i = ripples.length - 1; i >= 0; i--) {
         let r = ripples[i];
-        r.radius += (r.maxRadius - r.radius) * 0.1; // Ease out
+        r.radius += (r.maxRadius - r.radius) * 0.1;
         r.life -= 0.03;
         
         if (r.life <= 0) {
@@ -511,7 +531,7 @@ function updatePhysics() {
             ctx.stroke();
         }
     }
-    ctx.globalAlpha = 1.0; // Reset
+    ctx.globalAlpha = 1.0;
 }
 
 /**
@@ -534,37 +554,27 @@ function renderLoop(timestamp) {
 
     drawBackground();
 
-    // The main canvas will clear fully each frame since we handle ghosting via bgCanvas 
-    // BUT user requested trailing motion blur for fingertips.
-    // Instead of clearRect, we fade the main canvas using destination-out to keep it transparent
     ctx.globalCompositeOperation = 'destination-out';
     ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
     ctx.fillRect(0, 0, width, height);
 
-    // Enable Screen mode for additive light effects (like neon bloom)
-    ctx.globalCompositeOperation = 'screen'; // Creates glowy overlapping effects
+    ctx.globalCompositeOperation = 'screen';
 
-    // Render Physics layer
     updatePhysics();
 
-    // Process Hand Logic if present
     if (currentHands.length > 0) {
-        
         // 1. Draw Skeleton
         currentHands.forEach((hand, handIndex) => {
             const glowColor = themes[currentTheme](time, handIndex, 2);
             
-            // Draw MediaPipe skeleton connectors using custom styles
             drawConnectors(ctx, hand, HAND_CONNECTIONS, {
                 color: glowColor,
                 lineWidth: 2
             });
             
-            // Draw Landmarks with neon bloom
             ctx.shadowBlur = 15;
             ctx.shadowColor = glowColor;
             
-            // Only draw fingertips with intense bloom and spawn particles
             FINGER_TIPS.forEach((tipIndex, idx) => {
                 const pt = mapToCanvas(hand[tipIndex]);
                 const tipCol = themes[currentTheme](time, idx, FINGER_TIPS.length);
@@ -574,20 +584,18 @@ function renderLoop(timestamp) {
                 ctx.fillStyle = '#fff';
                 ctx.fill();
 
-                // Generate constant spark particles at fingertips
                 if (Math.random() > 0.6) {
                     createParticles(pt, tipCol, 1);
                 }
             });
-            ctx.shadowBlur = 0; // Reset
+            ctx.shadowBlur = 0;
         });
 
-        // 2. Cross-Hand Interactions (Lightning & Gradients)
+        // 2. Cross-Hand Interactions
         if (currentHands.length >= 2) {
             const h1 = currentHands[0];
             const h2 = currentHands[1];
 
-            // A. Rainbow Connecting Lines
             FINGER_TIPS.forEach((tipIndex, idx) => {
                 const pt1 = mapToCanvas(h1[tipIndex]);
                 const pt2 = mapToCanvas(h2[tipIndex]);
@@ -595,12 +603,9 @@ function renderLoop(timestamp) {
                 
                 const col = themes[currentTheme](time, idx, FINGER_TIPS.length);
                 
-                // Lightning electric arc when very close (but not touching)
                 if (dist < 150 && Math.random() > 0.5) {
-                    // Draw jagged lightning
                     ctx.beginPath();
                     ctx.moveTo(pt1.x, pt1.y);
-                    // Midpoint jitter
                     const midX = (pt1.x + pt2.x)/2 + (Math.random() - 0.5) * 50;
                     const midY = (pt1.y + pt2.y)/2 + (Math.random() - 0.5) * 50;
                     ctx.lineTo(midX, midY);
@@ -613,12 +618,10 @@ function renderLoop(timestamp) {
                     ctx.stroke();
                 }
 
-                // Normal flowing gradient line
                 ctx.beginPath();
                 ctx.moveTo(pt1.x, pt1.y);
                 ctx.lineTo(pt2.x, pt2.y);
                 
-                // Create gradient that shifts over time
                 let grad = ctx.createLinearGradient(pt1.x, pt1.y, pt2.x, pt2.y);
                 grad.addColorStop(0, themes[currentTheme](time, idx, 5));
                 grad.addColorStop(0.5, themes[currentTheme](time, idx + 1, 5));
@@ -632,20 +635,16 @@ function renderLoop(timestamp) {
                 ctx.shadowBlur = 0;
             });
 
-            // B. Mandala drawing if 10 tips are perfectly detected
-            // (Assuming if we have 2 hands, we draw lines connecting all tips in a star)
             if (h1 && h2) {
-                // Combine all 10 tips
                 let allTips = FINGER_TIPS.map(t => mapToCanvas(h1[t])).concat(
                               FINGER_TIPS.map(t => mapToCanvas(h2[t])) );
                 
                 ctx.save();
-                // Find center point to draw Mandala
                 let cx = allTips.reduce((sum, p) => sum + p.x, 0) / 10;
                 let cy = allTips.reduce((sum, p) => sum + p.y, 0) / 10;
                 
                 ctx.translate(cx, cy);
-                ctx.rotate(time * 0.5); // Slow rotation
+                ctx.rotate(time * 0.5);
                 
                 ctx.beginPath();
                 for (let i=0; i<10; i++) {
@@ -664,7 +663,7 @@ function renderLoop(timestamp) {
         detectGestures();
     }
     
-    ctx.globalCompositeOperation = 'source-over'; // Restore
+    ctx.globalCompositeOperation = 'source-over';
 }
 
 /**
@@ -683,15 +682,12 @@ function initMediaPipe() {
     });
 
     hands.onResults((results) => {
-        if (!audioCtx) return; // Wait for initialization
+        if (!audioCtx) return;
 
-        // Update global state for render loop to read from
         uiHands.innerText = results.multiHandLandmarks ? results.multiHandLandmarks.length : 0;
         
-        // Calculate velocity (rudimentary)
         if (currentHands.length > 0 && results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
             let vSum = 0;
-            // check distance difference on index finger of hand 0 
             const oldP = currentHands[0][8];
             const newP = results.multiHandLandmarks[0][8];
             if (oldP && newP) {
@@ -717,7 +713,6 @@ function initMediaPipe() {
     
     camera.start();
 }
-
 </script>
 </body>
 </html>
