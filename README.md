@@ -24,7 +24,10 @@ Using MediaPipe and Canvas rendering, the project creates interactive neon visua
 
 # ✨ Features
 
-* ✋ Real-time hand landmark tracking
+
+* 🖐️ Real-Time Hand Tracking
+* ✌️ Peace Sign Detection
+* 👍 Thumbs Up Detection
 * 🌈 Neon glowing fingertips
 * ⚡ Gesture detection system
 * 💥 Shockwave & ripple effects
