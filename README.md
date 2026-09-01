@@ -1,4 +1,7 @@
-# 🚀 NEUON AR — HandConnect
+# 🚀 NEUON AR — ConnectHand 
+
+👉 **[Visit NEUON AR — ConnectHand](https://neon-aura-ar-connecthand.vercel.app/)**
+
 
 A futuristic browser-based **Augmented Reality Hand Tracking Experience** built using **HTML, JavaScript, Canvas API, and MediaPipe**.
 
@@ -16,7 +19,7 @@ This project combines:
 
 # 📌 Project Overview
 
-**NEUON AR — HandConnect** is an immersive real-time hand tracking experience that transforms your webcam into a futuristic cyberpunk interface.
+**NEUON AR —ConnectHand** is an immersive real-time hand tracking experience that transforms your webcam into a futuristic cyberpunk interface.
 
 Using MediaPipe and Canvas rendering, the project creates interactive neon visuals, glowing fingertip effects, gesture-based interactions, lightning effects, matrix rain animations, and reactive audio systems directly inside the browser.
 
