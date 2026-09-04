@@ -1,9 +1,15 @@
+<div align="center">
+  
 # 🚀 NEUON AR — ConnectHand 
 
 👉 **[Visit NEUON AR — ConnectHand](https://neon-aura-ar-connecthand.vercel.app/)**
 
 
 A futuristic browser-based **Augmented Reality Hand Tracking Experience** built using **HTML, JavaScript, Canvas API, and MediaPipe**.
+
+</div>
+
+---
 
 This project combines:
 
